@@ -75,8 +75,6 @@ impl Chip {
 
         let instr = Instruction::from_u16(((first_byte as u16) << 8) | second_byte as u16);
 
-        dbg!(&instr);
-
         // Increment to next instruction
         self.pc += 2;
 
@@ -244,18 +242,13 @@ impl Chip {
                 for i in 0..len {
                     let sprite_data = self.memory[(addr + i as u16) as usize];
 
-                    dbg!("hio");
-
                     for j in 0..(8 as u8) {
                         if sprite_data & (1 << j) == 0 {
                             self.display[y_coord as usize][x_coord as usize] =
                                 !self.display[y_coord as usize][x_coord as usize];
-
-                            dbg!("hi");
                         }
 
                         x_coord += 1;
-                        dbg!(x_coord);
                         if x_coord >= 64 {
                             break;
                         }
@@ -294,8 +287,6 @@ impl Chip {
             0xF => {
                 let x_addr = instr.get_nib(1);
                 let x_val = self.var_reg.get(x_addr);
-
-                dbg!(&instr);
 
                 match instr.get_nib(3) {
                     // Fx07
@@ -471,8 +462,6 @@ impl VariableRegisters {
     }
 
     fn set(&mut self, reg: u8, val: u8) {
-        dbg!(reg);
-        dbg!(val);
         match reg {
             0 => self.v0 = val,
             1 => self.v1 = val,
