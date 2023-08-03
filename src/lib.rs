@@ -79,10 +79,10 @@ impl Chip {
         self.pc += 2;
 
         match instr.get_nib(0) {
-            0x0 => match instr.get_nib(3) {
+            0x0 => match instr.0 {
                 // 00E0
                 // Clear the display
-                0x0 => {
+                0x00E0 => {
                     self.display = [[false; 64]; 32];
                     return true;
                 }
@@ -90,7 +90,11 @@ impl Chip {
                 // 00EE
                 // Return from subroutine
                 // Pops the return address from stack and sets the PC
-                0xE => self.pc = self.stack.pop().unwrap(),
+                0x00EE => self.pc = self.stack.pop().unwrap(),
+
+                // 0000
+                // Blank
+                0x0000 => {}
                 _ => panic!(),
             },
             // 1nnn
@@ -231,9 +235,13 @@ impl Chip {
             // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#dxyn-display
             // TODO: Document code
             0xD => {
+                // Starting X-Coordinate
                 let initial_x = self.var_reg.get(instr.get_nib(1)) & 0x3F;
+                // Current X-Coordinate
                 let mut x_coord = initial_x;
+                // Current Y-Coordinate
                 let mut y_coord = self.var_reg.get(instr.get_nib(2)) & 0x1F;
+                // Total height
                 let len = instr.get_nib(3);
 
                 let addr = self.i_reg;
