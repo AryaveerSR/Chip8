@@ -5,9 +5,10 @@
 //! http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 //! https://tobiasvl.github.io/blog/write-a-chip-8-emulator
 
-use std::ops::Index;
+//TODO: Replace all mentions of .index() with just []
 
 use rand::Rng;
+use std::ops::Index;
 
 const FONT_0: [u8; 5] = [0xF0, 0x90, 0x90, 0x90, 0xF0];
 const FONT_1: [u8; 5] = [0x20, 0x60, 0x20, 0x20, 0x70];
@@ -295,9 +296,49 @@ impl Chip {
                             self.var_reg.set(x_addr, 0x00);
                         }
                     }
-                    // Fx15
-                    // Set Delay Timer = V(x)
-                    0x5 => self.delay_timer = x_val,
+                    // Fx18
+                    // Set Sound Timer = V(x)
+                    0x8 => self.sound_timer = x_val,
+                    // Fx1E
+                    // Set I = I + V(x)
+                    0xE => self.i_reg += x_val as u16,
+                    // Fx29
+                    // Set I to location of sprite for V(x)
+                    0x9 => {
+                        //TODO: Set this to where the sprites are loaded
+                        self.i_reg = 0x00;
+                    }
+                    // Fx33
+                    // Set I, I+1, I+2 to V(x)'s hundreds, tens, and ones digits
+                    0x3 => {
+                        self.memory[self.i_reg as usize] = (x_val / 100) % 10;
+                        self.memory[(self.i_reg + 1) as usize] = (x_val / 10) % 10;
+                        self.memory[(self.i_reg + 2) as usize] = x_val % 10;
+                    }
+                    0x5 => {
+                        match instr.get_nib(2) {
+                            // Fx15
+                            // Set Delay Timer = V(x)
+                            0x1 => self.delay_timer = x_val,
+                            // Fx55
+                            // Store register values in memory
+                            0x5 => {
+                                for i in 0..16 {
+                                    self.memory[(self.i_reg + i) as usize] =
+                                        self.var_reg.get(i as u8);
+                                }
+                            }
+                            // Fx65
+                            // Read register values from memory
+                            0x6 => {
+                                for i in 0..16 {
+                                    self.var_reg
+                                        .set(i as u8, self.memory[(self.i_reg + i) as usize]);
+                                }
+                            }
+                            _ => panic!(),
+                        }
+                    }
 
                     _ => panic!(),
                 }
