@@ -2,6 +2,8 @@
 name = "chip8"
 version = "0.1.0"
 edition = "2021"
+authors = ["AryaveerSR <me.aryaveer@gmail.com>"]
+license = "MIT"
 
 [dependencies]
 rand = "0.8.5"
