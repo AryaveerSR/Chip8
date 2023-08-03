@@ -5,10 +5,7 @@
 //! http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 //! https://tobiasvl.github.io/blog/write-a-chip-8-emulator
 
-//TODO: Replace all mentions of .index() with just []
-
 use rand::Rng;
-use std::ops::Index;
 
 const FONT_0: [u8; 5] = [0xF0, 0x90, 0x90, 0x90, 0xF0];
 const FONT_1: [u8; 5] = [0x20, 0x60, 0x20, 0x20, 0x70];
@@ -27,11 +24,10 @@ const FONT_D: [u8; 5] = [0xE0, 0x90, 0x90, 0x90, 0xE0];
 const FONT_E: [u8; 5] = [0xF0, 0x80, 0xF0, 0x80, 0xF0];
 const FONT_F: [u8; 5] = [0xF0, 0x80, 0xF0, 0x80, 0x80];
 
-const INSTRUCTIONS_PER_SECOND: u16 = 700;
-
-struct Chip {
+#[derive(Debug)]
+pub struct Chip {
     /// 4KB Memory (4096 Bytes)
-    memory: [u8; 4096],
+    memory: Vec<u8>,
     /// 2D Array of bools.
     /// True => On(Black);
     /// False => Off(Black)
@@ -59,33 +55,40 @@ impl Chip {
     /// interpreter itself. It's only use is fonts.
     const PROGRAM_START: u16 = 0x200;
 
-    fn process_instruction(&mut self) {
+    pub fn display(&self) -> [[bool; 64]; 32] {
+        self.display
+    }
+
+    // Process current instruction
+    // Return true if display is updated
+    pub fn process_instruction(&mut self) -> bool {
         // Get two consecutive bytes from PC & PC+1 and combine to form one u16(2 bytes)
         // and then construct them into the Instruction struct
-        let instr = Instruction::from_u16(
-            ((*self
-                .memory
-                .get(self.pc as usize)
-                .expect("Program Counter is invalid") as u16)
-                << 8)
-                + (*self
-                    .memory
-                    .get(self.pc as usize + 1)
-                    .expect("Program Counter is invalid") as u16)
-                << 8,
-        );
+        let first_byte = *self
+            .memory
+            .get(self.pc as usize)
+            .expect("Program Counter is invalid");
+        let second_byte = *self
+            .memory
+            .get(self.pc as usize + 1)
+            .expect("Program Counter is invalid") as u16;
+
+        let instr = Instruction::from_u16(((first_byte as u16) << 8) | second_byte as u16);
+
+        dbg!(&instr);
 
         // Increment to next instruction
         self.pc += 2;
 
-        //TODO
         match instr.get_nib(0) {
             0x0 => match instr.get_nib(3) {
                 // 00E0
                 // Clear the display
                 0x0 => {
-                    // TODO: Clear display
+                    self.display = [[false; 64]; 32];
+                    return true;
                 }
+
                 // 00EE
                 // Return from subroutine
                 // Pops the return address from stack and sets the PC
@@ -228,9 +231,10 @@ impl Chip {
             // Draw sprite function
             //
             // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#dxyn-display
-            // TODO: Doc
+            // TODO: Document code
             0xD => {
-                let mut x_coord = self.var_reg.get(instr.get_nib(1)) & 0x3F;
+                let initial_x = self.var_reg.get(instr.get_nib(1)) & 0x3F;
+                let mut x_coord = initial_x;
                 let mut y_coord = self.var_reg.get(instr.get_nib(2)) & 0x1F;
                 let len = instr.get_nib(3);
 
@@ -238,25 +242,33 @@ impl Chip {
                 self.var_reg.vf = 0;
 
                 for i in 0..len {
-                    let sprite_data = self.memory.index((addr + i as u16) as usize);
+                    let sprite_data = self.memory[(addr + i as u16) as usize];
+
+                    dbg!("hio");
 
                     for j in 0..(8 as u8) {
                         if sprite_data & (1 << j) == 0 {
                             self.display[y_coord as usize][x_coord as usize] =
                                 !self.display[y_coord as usize][x_coord as usize];
+
+                            dbg!("hi");
                         }
 
                         x_coord += 1;
-                        if x_coord == 0x40 {
+                        dbg!(x_coord);
+                        if x_coord >= 64 {
                             break;
                         }
                     }
 
+                    x_coord = initial_x;
                     y_coord += 1;
-                    if y_coord == 0x20 {
+                    if y_coord >= 32 {
                         break;
                     }
                 }
+
+                return true;
             }
             // Keyboard Interactions
             0xE => match instr.get_nib(3) {
@@ -283,6 +295,8 @@ impl Chip {
                 let x_addr = instr.get_nib(1);
                 let x_val = self.var_reg.get(x_addr);
 
+                dbg!(&instr);
+
                 match instr.get_nib(3) {
                     // Fx07
                     // Set V(x) = Delay Timer
@@ -304,10 +318,8 @@ impl Chip {
                     0xE => self.i_reg += x_val as u16,
                     // Fx29
                     // Set I to location of sprite for V(x)
-                    0x9 => {
-                        //TODO: Set this to where the sprites are loaded
-                        self.i_reg = 0x00;
-                    }
+                    0x9 => self.i_reg = (5 * x_val) as u16,
+
                     // Fx33
                     // Set I, I+1, I+2 to V(x)'s hundreds, tens, and ones digits
                     0x3 => {
@@ -345,16 +357,41 @@ impl Chip {
             }
             _ => panic!(),
         }
+        return false;
     }
 
-    fn new() -> Self {
+    pub fn new(program: Vec<u8>) -> Self {
+        let mut memory: Vec<u8> = vec![];
+
+        // Forgive me for this code
+        memory.extend_from_slice(&FONT_0);
+        memory.extend_from_slice(&FONT_1);
+        memory.extend_from_slice(&FONT_2);
+        memory.extend_from_slice(&FONT_3);
+        memory.extend_from_slice(&FONT_4);
+        memory.extend_from_slice(&FONT_5);
+        memory.extend_from_slice(&FONT_6);
+        memory.extend_from_slice(&FONT_7);
+        memory.extend_from_slice(&FONT_8);
+        memory.extend_from_slice(&FONT_9);
+        memory.extend_from_slice(&FONT_A);
+        memory.extend_from_slice(&FONT_B);
+        memory.extend_from_slice(&FONT_C);
+        memory.extend_from_slice(&FONT_D);
+        memory.extend_from_slice(&FONT_E);
+        memory.extend_from_slice(&FONT_F);
+
+        memory.resize((Self::PROGRAM_START - 1) as usize, 0);
+        memory.extend(program);
+        memory.resize(4096, 0);
+
         Chip {
-            memory: [0; 4096], //TODO: Load program
+            memory,
             display: [[false; 64]; 32],
             stack: vec![],
             delay_timer: 0,
             sound_timer: 0,
-            pc: Self::PROGRAM_START,
+            pc: Self::PROGRAM_START - 1,
             i_reg: 0,
             var_reg: VariableRegisters::new(),
         }
@@ -362,12 +399,13 @@ impl Chip {
 }
 
 // Contains helpful methods for parsing instructions
+#[derive(Debug)]
 struct Instruction(u16);
 
 impl Instruction {
     // Group of 4 bits. Index from most to least significant
     fn get_nib(&self, index: u8) -> u8 {
-        ((self.0 & (0x000f << 4 * (4 - index as i8))) >> (4 * (4 - index as i8))) as u8
+        ((self.0 & (0x000f << 4 * (3 - index as i8))) >> (4 * (3 - index as i8))) as u8
     }
 
     // Lowest 8 bits (lower byte)
@@ -387,6 +425,7 @@ impl Instruction {
 
 /// Structure for general-purpose registers.
 /// Simplies accessing them from instructions.
+#[derive(Debug)]
 struct VariableRegisters {
     v0: u8,
     v1: u8,
@@ -432,6 +471,8 @@ impl VariableRegisters {
     }
 
     fn set(&mut self, reg: u8, val: u8) {
+        dbg!(reg);
+        dbg!(val);
         match reg {
             0 => self.v0 = val,
             1 => self.v1 = val,
@@ -472,5 +513,15 @@ impl VariableRegisters {
             ve: 0,
             vf: 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {
+        // TODO: Add Tests
     }
 }
