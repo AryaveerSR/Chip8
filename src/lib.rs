@@ -5,6 +5,9 @@
 //! http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 //! https://tobiasvl.github.io/blog/write-a-chip-8-emulator
 
+pub mod structs;
+
+use crate::structs::{Instruction, VariableRegisters};
 use rand::Rng;
 
 const FONT_0: [u8; 5] = [0xF0, 0x90, 0x90, 0x90, 0xF0];
@@ -60,7 +63,7 @@ impl Chip {
     }
 
     // Process current instruction
-    // Return true if display is updated
+    // Returns true if display is updated
     pub fn process_instruction(&mut self) -> bool {
         // Get two consecutive bytes from PC & PC+1 and combine to form one u16(2 bytes)
         // and then construct them into the Instruction struct
@@ -233,7 +236,6 @@ impl Chip {
             // Draw sprite function
             //
             // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#dxyn-display
-            // TODO: Document code
             0xD => {
                 // Starting X-Coordinate
                 let initial_x = self.var_reg.get(instr.get_nib(1)) & 0x3F;
@@ -247,10 +249,11 @@ impl Chip {
                 let addr = self.i_reg;
                 self.var_reg.vf = 0;
 
+                // For every line..
                 for i in 0..len {
                     let sprite_data = self.memory[(addr + i as u16 - 1) as usize];
-                    dbg!(sprite_data);
 
+                    // For every bit..
                     for j in 0..(8 as u8) {
                         if sprite_data & (128 >> j) != 0 {
                             self.display[y_coord as usize][x_coord as usize] =
@@ -363,7 +366,7 @@ impl Chip {
     pub fn new(program: Vec<u8>) -> Self {
         let mut memory: Vec<u8> = vec![];
 
-        // Forgive me for this code
+        // Loads stuff into memory (painful to the eyes ik)
         memory.extend_from_slice(&FONT_0);
         memory.extend_from_slice(&FONT_1);
         memory.extend_from_slice(&FONT_2);
@@ -395,131 +398,5 @@ impl Chip {
             i_reg: 0,
             var_reg: VariableRegisters::new(),
         }
-    }
-}
-
-// Contains helpful methods for parsing instructions
-#[derive(Debug)]
-struct Instruction(u16);
-
-impl Instruction {
-    // Group of 4 bits. Index from most to least significant
-    fn get_nib(&self, index: u8) -> u8 {
-        ((self.0 & (0x000f << 4 * (3 - index as i8))) >> (4 * (3 - index as i8))) as u8
-    }
-
-    // Lowest 8 bits (lower byte)
-    fn get_lbyte(&self) -> u8 {
-        (self.0 & 0x00ff) as u8
-    }
-
-    // Lowest 12 bits
-    fn get_addr(&self) -> u16 {
-        (self.0 & 0x0fff) as u16
-    }
-
-    fn from_u16(n: u16) -> Self {
-        Instruction(n)
-    }
-}
-
-/// Structure for general-purpose registers.
-/// Simplies accessing them from instructions.
-#[derive(Debug)]
-struct VariableRegisters {
-    v0: u8,
-    v1: u8,
-    v2: u8,
-    v3: u8,
-    v4: u8,
-    v5: u8,
-    v6: u8,
-    v7: u8,
-    v8: u8,
-    v9: u8,
-    va: u8,
-    vb: u8,
-    vc: u8,
-    vd: u8,
-    ve: u8,
-    /// It is also used as flag register for instructions.
-    /// Many instructions set it to 1 or 0 based on some rule (eg: carry flag)
-    vf: u8,
-}
-
-impl VariableRegisters {
-    fn get(&self, reg: u8) -> u8 {
-        match reg {
-            0 => self.v0,
-            1 => self.v1,
-            2 => self.v2,
-            3 => self.v3,
-            4 => self.v4,
-            5 => self.v5,
-            6 => self.v6,
-            7 => self.v7,
-            8 => self.v8,
-            9 => self.v9,
-            10 => self.va,
-            11 => self.vb,
-            12 => self.vc,
-            13 => self.vd,
-            14 => self.ve,
-            15 => self.vf,
-            _ => panic!(),
-        }
-    }
-
-    fn set(&mut self, reg: u8, val: u8) {
-        match reg {
-            0 => self.v0 = val,
-            1 => self.v1 = val,
-            2 => self.v2 = val,
-            3 => self.v3 = val,
-            4 => self.v4 = val,
-            5 => self.v5 = val,
-            6 => self.v6 = val,
-            7 => self.v7 = val,
-            8 => self.v8 = val,
-            9 => self.v9 = val,
-            10 => self.va = val,
-            11 => self.vb = val,
-            12 => self.vc = val,
-            13 => self.vd = val,
-            14 => self.ve = val,
-            15 => self.vf = val,
-            _ => panic!(),
-        };
-    }
-
-    fn new() -> Self {
-        VariableRegisters {
-            v0: 0,
-            v1: 0,
-            v2: 0,
-            v3: 0,
-            v4: 0,
-            v5: 0,
-            v6: 0,
-            v7: 0,
-            v8: 0,
-            v9: 0,
-            va: 0,
-            vb: 0,
-            vc: 0,
-            vd: 0,
-            ve: 0,
-            vf: 0,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test() {
-        // TODO: Add Tests
     }
 }
