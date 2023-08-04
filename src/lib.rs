@@ -94,8 +94,8 @@ impl Chip {
 
                 // 0000
                 // Blank
-                0x0000 => {}
-                _ => panic!(),
+                0x0000 => self.pc -= 2,
+                _ => panic!("{:?}", instr),
             },
             // 1nnn
             // Jump to address
@@ -248,10 +248,11 @@ impl Chip {
                 self.var_reg.vf = 0;
 
                 for i in 0..len {
-                    let sprite_data = self.memory[(addr + i as u16) as usize];
+                    let sprite_data = self.memory[(addr + i as u16 - 1) as usize];
+                    dbg!(sprite_data);
 
                     for j in 0..(8 as u8) {
-                        if sprite_data & (1 << j) == 0 {
+                        if sprite_data & (128 >> j) != 0 {
                             self.display[y_coord as usize][x_coord as usize] =
                                 !self.display[y_coord as usize][x_coord as usize];
                         }
