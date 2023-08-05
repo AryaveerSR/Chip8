@@ -313,6 +313,10 @@ impl Chip {
                     // For every bit..
                     for j in 0..(8 as u8) {
                         if sprite_data & (128 >> j) != 0 {
+                            if self.display[y_coord][x_coord] {
+                                self.var_reg.vf = 1;
+                            }
+
                             self.display[y_coord][x_coord] = !self.display[y_coord][x_coord];
                         }
 
