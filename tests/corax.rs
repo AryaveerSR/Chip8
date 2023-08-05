@@ -1,10 +1,11 @@
-use chip8::{helpers, structs::BehaviorConfig, Chip};
+use chip8::{structs::BehaviorConfig, Chip};
+use std::fs;
 
 #[test]
 fn test_corax_output() {
     let mut instr: u32 = 0;
     let mut chip = Chip::new(
-        helpers::file_as_vec("roms/tests/corax.ch8"),
+        fs::read("roms/tests/corax.ch8").unwrap(),
         BehaviorConfig::default(),
     );
 
