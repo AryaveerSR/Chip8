@@ -10,7 +10,7 @@
 
 1. [About](#about)
 2. [Goals](#goals)
-3. [Non-goals](#non-goals)
+3. [Future Goals](#future-goals)
 4. [File Structure](#file-structure)
 5. [Resources](#resources)
 6. [License](#license)
@@ -24,7 +24,7 @@ This is my attempt at making a `Chip-8` emulator in rust. Chip-8 is apparantly t
 - Implement all (original) CHIP-8 instructions
 - A user-friendly command-line interface
 
-## Non-goals
+## Future Goals
 
 - Any kind of support for CHIP-48 or SUPER-CHIP extensions
 - GUI interface to load, save ROMs etc.
