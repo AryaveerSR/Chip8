@@ -1,10 +1,5 @@
 //! ### Main Implementation for CHIP-8 Emulator
 //! @AryaveerSR <me.aryaveer@gmail.com>
-//!
-//! ### References:
-//! * http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
-//!
-//! * https://tobiasvl.github.io/blog/write-a-chip-8-emulator
 
 pub mod helpers;
 pub mod structs;

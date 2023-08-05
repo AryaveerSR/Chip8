@@ -4,6 +4,7 @@
 use chip8::{helpers, structs::BehaviorConfig, Chip};
 use gumdrop::Options;
 use minifb::{Key, Scale, Window, WindowOptions};
+use std::fs;
 
 #[derive(Options)]
 struct ArgOpts {
@@ -31,7 +32,7 @@ fn main() {
 
     let update_rate = match args.rate {
         Some(r) => r,
-        None => 75, // This value is from trial and error (feels slightly too fast)
+        None => 75, // Default value. (feels slightly too fast)
     };
 
     let mut buffer: Vec<u32>;
@@ -50,7 +51,7 @@ fn main() {
         behavior.vf_reset = args.vf_reset.unwrap();
     }
 
-    let mut chip = Chip::new(helpers::file_as_vec(&args.free[0]), behavior);
+    let mut chip = Chip::new(fs::read(&args.free[0]).unwrap(), behavior);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if chip.process_instruction(helpers::keys_to_u8(window.get_keys())) {

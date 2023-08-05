@@ -2,12 +2,6 @@
 //! @AryaveerSR <me.aryaveer@gmail.com>
 
 use minifb::Key;
-use std::fs;
-
-pub fn file_as_vec(path: &str) -> Vec<u8> {
-    // TODO: More user friendly errors
-    fs::read(path).unwrap()
-}
 
 /// ## Key mappings
 /// The key mappings are described here:
