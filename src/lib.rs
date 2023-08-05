@@ -212,11 +212,9 @@ impl Chip {
                     0x6 => {
                         // Conflicting Implementations
                         // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
-                        //
-                        // self.var_reg.vf = y_val & 0x1;
-                        // self.var_reg.set(x_addr, y_val >> 1)
-                        self.var_reg.vf = x_val & 0x1;
-                        self.var_reg.set(x_addr, x_val >> 1);
+
+                        self.var_reg.set(x_addr, y_val >> 1);
+                        self.var_reg.vf = ((x_val & 0x1) != 0) as u8;
                     }
                     // 8xy7
                     // Set V(x) = V(y) - V(x) & set V(F) as NOT borrow
@@ -236,11 +234,9 @@ impl Chip {
                     0xE => {
                         // Conflicting Implementations
                         // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
-                        //
-                        // self.var_reg.vf = y_val & 0x80;
-                        // self.var_reg.set(x_addr, y_val << 1);
-                        self.var_reg.vf = x_val & 0x80;
-                        self.var_reg.set(x_addr, x_val << 1);
+
+                        self.var_reg.set(x_addr, y_val << 1);
+                        self.var_reg.vf = ((y_val & 0x80) != 0) as u8;
                     }
                     _ => panic!(),
                 };
