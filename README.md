@@ -13,7 +13,8 @@
 3. [Future Goals](#future-goals)
 4. [File Structure](#file-structure)
 5. [Resources](#resources)
-6. [License](#license)
+6. [Screenshots](#screenshots)
+7. [License](#license)
 
 ## About
 
@@ -53,6 +54,17 @@ PS: I think I overcommented the code a bit
 - https://github.com/Timendus/chip8-test-suite
   <br>
   Includes test ROMs to verify your implementation
+
+## Screenshots
+
+- IBM Logo
+  ![image](https://github.com/AryaveerSR/Chip8/assets/51504825/449355e3-ef4e-42eb-bbed-7ecb791fab3b)
+
+- Flight Runner
+  ![image](https://github.com/AryaveerSR/Chip8/assets/51504825/daa79e42-7147-4ecd-af97-d6fb525605ef)
+
+- Keypad
+  ![image](https://github.com/AryaveerSR/Chip8/assets/51504825/6962f0e2-8671-4258-b1e4-46746ac7b25c)
 
 ## License
 
