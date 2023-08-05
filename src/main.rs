@@ -1,15 +1,38 @@
 //! Entry point for CHIP-8 Emulator
 //! @AryaveerSR <me.aryaveer@gmail.com>
 
-use chip8::{helpers, Chip};
+use chip8::{helpers, structs::BehaviorConfig, Chip};
+use gumdrop::Options;
 use minifb::{Key, Scale, Window, WindowOptions};
-use std::env;
+
+#[derive(Options)]
+struct ArgOpts {
+    #[options(free, help = "Path to the Chip 8 binary")]
+    free: Vec<String>,
+
+    #[options(help = "Print Help Message")]
+    help: bool,
+
+    #[options(help = "Window update rate limit")]
+    rate: Option<u64>,
+
+    #[options(help = "Whether to reset V(F) after 8xy1, 8xy2, and 8xy3 instructions")]
+    vf_reset: Option<bool>,
+
+    #[options(help = "Whether to increment I on save and load instructions")]
+    increment_i: Option<bool>,
+}
 
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 
 fn main() {
-    let args: Vec<_> = env::args().collect();
+    let args = ArgOpts::parse_args_default_or_exit();
+
+    let update_rate = match args.rate {
+        Some(r) => r,
+        None => 75, // This value is from trial and error (feels slightly too fast)
+    };
 
     let mut buffer: Vec<u32>;
     let mut opts = WindowOptions::default();
@@ -17,9 +40,17 @@ fn main() {
 
     let mut window =
         Window::new("Chip 8 Emulator", WIDTH, HEIGHT, opts).expect("Should create widnow");
-    window.limit_update_rate(Some(std::time::Duration::from_micros(75))); // This value is from trial and error :D
+    window.limit_update_rate(Some(std::time::Duration::from_micros(update_rate)));
 
-    let mut chip = Chip::new(helpers::file_as_vec(&args[1]));
+    let mut behavior = BehaviorConfig::default();
+    if args.increment_i.is_some() {
+        behavior.increment_i_on_save_load = args.increment_i.unwrap();
+    }
+    if args.vf_reset.is_some() {
+        behavior.vf_reset = args.vf_reset.unwrap();
+    }
+
+    let mut chip = Chip::new(helpers::file_as_vec(&args.free[0]), behavior);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if chip.process_instruction(helpers::keys_to_u8(window.get_keys())) {

@@ -119,6 +119,7 @@ impl Instruction {
 pub struct BehaviorConfig {
     /// Does it reset V(F) register to 0 for 8xy1, 8xy2 and 8xy3 instructions
     pub vf_reset: bool,
+    /// Does it increment I register on save and load operations
     pub increment_i_on_save_load: bool,
 }
 

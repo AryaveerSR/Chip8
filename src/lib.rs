@@ -1,9 +1,10 @@
-//! Main Implementation for CHIP-8 Emulator
+//! ### Main Implementation for CHIP-8 Emulator
 //! @AryaveerSR <me.aryaveer@gmail.com>
 //!
-//! References:
-//! http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
-//! https://tobiasvl.github.io/blog/write-a-chip-8-emulator
+//! ### References:
+//! * http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
+//!
+//! * https://tobiasvl.github.io/blog/write-a-chip-8-emulator
 
 pub mod helpers;
 pub mod structs;
@@ -424,7 +425,7 @@ impl Chip {
         return false;
     }
 
-    pub fn new(program: Vec<u8>) -> Self {
+    pub fn new(program: Vec<u8>, behavior: BehaviorConfig) -> Self {
         let mut memory: Vec<u8> = vec![];
 
         // Loads stuff into memory (painful to the eyes)
@@ -460,7 +461,7 @@ impl Chip {
             var_reg: VariableRegisters::new(),
             is_waiting_for_press: None,
             last_update: Instant::now(),
-            behavior: BehaviorConfig::default(), // TODO: Take user input
+            behavior,
         }
     }
 }
