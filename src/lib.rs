@@ -8,10 +8,9 @@
 pub mod helpers;
 pub mod structs;
 
-use std::num::Wrapping;
-
-use crate::structs::{Instruction, VariableRegisters};
+use crate::structs::{BehaviorConfig, Instruction, VariableRegisters};
 use rand::Rng;
+use std::{num::Wrapping, time::Instant};
 
 const FONT_0: [u8; 5] = [0xF0, 0x90, 0x90, 0x90, 0xF0];
 const FONT_1: [u8; 5] = [0x20, 0x60, 0x20, 0x20, 0x70];
@@ -34,9 +33,9 @@ const FONT_F: [u8; 5] = [0xF0, 0x80, 0xF0, 0x80, 0x80];
 pub struct Chip {
     /// 4KB Memory (4096 Bytes)
     memory: Vec<u8>,
-    /// 2D Array of bools.
-    /// True => On(Black);
-    /// False => Off(Black)
+    /// 2D Array of bools each representing a monochromatic pixel.
+    /// 1 => White;
+    /// 0 => Black
     // TODO: Use `bitvec` crate ??
     display: [[bool; 64]; 32],
     /// Last in, First out stack.
@@ -57,6 +56,10 @@ pub struct Chip {
     /// If the program is halted and waiting for a keypress
     /// The u8 is the register to put the keycode into.
     is_waiting_for_press: Option<u8>,
+    /// Time elapsed since last timer update
+    last_update: Instant,
+    /// Behavior Configurations for conflicting implementations (Check `structs.rs`)
+    behavior: BehaviorConfig,
 }
 
 impl Chip {
@@ -74,6 +77,17 @@ impl Chip {
     ///
     /// Takes a Vec<u8> of all the (supported) keys currently being pressed
     pub fn process_instruction(&mut self, keys: Vec<u8>) -> bool {
+        // Update timers
+        if self.last_update.elapsed().as_millis() > 17 {
+            if self.delay_timer != 0 {
+                self.delay_timer -= 1;
+            }
+            if self.sound_timer != 0 {
+                self.sound_timer -= 1;
+            }
+            self.last_update = Instant::now();
+        }
+
         // Check if it's supposed to wait for a keypress
         if self.is_waiting_for_press.is_some() {
             if keys.is_empty() {
@@ -174,13 +188,28 @@ impl Chip {
                     0x0 => self.var_reg.set(x_addr, y_val),
                     // 8xy1
                     // Set V(x) = V(x) |(Bitwise OR) V(y)
-                    0x1 => self.var_reg.set(x_addr, x_val | y_val),
+                    0x1 => {
+                        self.var_reg.set(x_addr, x_val | y_val);
+                        if self.behavior.vf_reset {
+                            self.var_reg.vf = 0;
+                        }
+                    }
                     // 8xy2
                     // Set V(x) = V(x) &(Bitwise AND) V(y)
-                    0x2 => self.var_reg.set(x_addr, x_val & y_val),
+                    0x2 => {
+                        self.var_reg.set(x_addr, x_val & y_val);
+                        if self.behavior.vf_reset {
+                            self.var_reg.vf = 0;
+                        }
+                    }
                     // 8xy3
                     // Set V(x) = V(x) ^(Bitwise XOR) V(y)
-                    0x3 => self.var_reg.set(x_addr, x_val ^ y_val),
+                    0x3 => {
+                        self.var_reg.set(x_addr, x_val ^ y_val);
+                        if self.behavior.vf_reset {
+                            self.var_reg.vf = 0;
+                        }
+                    }
                     // 8xy4
                     // Set V(x) = V(x) + V(y) & set V(F) to carry
                     0x4 => {
@@ -266,11 +295,11 @@ impl Chip {
             // https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#dxyn-display
             0xD => {
                 // Starting X-Coordinate
-                let initial_x = self.var_reg.get(instr.get_nib(1)) & 0x3F;
+                let initial_x = self.var_reg.get(instr.get_nib(1)) % 64;
                 // Current X-Coordinate
                 let mut x_coord = initial_x as usize;
                 // Current Y-Coordinate
-                let mut y_coord = self.var_reg.get(instr.get_nib(2)) as usize & 0x1F;
+                let mut y_coord = self.var_reg.get(instr.get_nib(2)) as usize % 32;
                 // Total height
                 let len = instr.get_nib(3);
 
@@ -367,6 +396,9 @@ impl Chip {
                                     self.memory[(self.i_reg + i as u16) as usize] =
                                         self.var_reg.get(i);
                                 }
+                                if self.behavior.increment_i_on_save_load {
+                                    self.i_reg += x_addr as u16 + 1;
+                                }
                             }
                             // Fx65
                             // Read register values from memory
@@ -423,6 +455,8 @@ impl Chip {
             i_reg: 0,
             var_reg: VariableRegisters::new(),
             is_waiting_for_press: None,
+            last_update: Instant::now(),
+            behavior: BehaviorConfig::default(), // TODO: Take user input
         }
     }
 }

@@ -113,3 +113,20 @@ impl Instruction {
         Instruction(n)
     }
 }
+
+/// Behavior Configurations for conflicting implementations
+#[derive(Debug)]
+pub struct BehaviorConfig {
+    /// Does it reset V(F) register to 0 for 8xy1, 8xy2 and 8xy3 instructions
+    pub vf_reset: bool,
+    pub increment_i_on_save_load: bool,
+}
+
+impl BehaviorConfig {
+    pub fn default() -> Self {
+        BehaviorConfig {
+            vf_reset: true,
+            increment_i_on_save_load: true,
+        }
+    }
+}
