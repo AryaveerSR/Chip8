@@ -32,12 +32,12 @@ This is my attempt at making a `Chip-8` emulator in rust. Chip-8 is apparantly t
 ## File Structure
 
 - `src/`
-  - `main.rs`: Entry point for the application. Contains code to interface with the GUI library.
-  - `lib.rs`: Implementation of the CHIP-8 Emulator.
-  - `structs.rs`: Contains all other structs used, including QOL ones.
-  - `helpers.rs`: Helper functions.
+  - [`main.rs`](src/main.rs): Entry point for the application. Contains code to interface with the GUI library.
+  - [`lib.rs`](src/lib.rs): Implementation of the CHIP-8 Emulator.
+  - [`structs.rs`](src/structs.rs): Contains all other structs used, including QOL ones.
+  - [`helpers.rs`](src/helpers.rs): Helper functions.
 - `roms/`
-  - `tests/`: ROMs to test the implementation of the emulator. Taken from https://github.com/Timendus/chip8-test-suite
+  - `tests`: ROMs to test the implementation of the emulator. Taken from https://github.com/Timendus/chip8-test-suite
   - `games/`: Games :-)
 
 PS: I think I overcommented the code a bit
