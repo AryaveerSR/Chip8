@@ -5,7 +5,10 @@
 //! http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 //! https://tobiasvl.github.io/blog/write-a-chip-8-emulator
 
+pub mod helpers;
 pub mod structs;
+
+use std::num::Wrapping;
 
 use crate::structs::{Instruction, VariableRegisters};
 use rand::Rng;
@@ -34,6 +37,7 @@ pub struct Chip {
     /// 2D Array of bools.
     /// True => On(Black);
     /// False => Off(Black)
+    // TODO: Use `bitvec` crate ??
     display: [[bool; 64]; 32],
     /// Last in, First out stack.
     stack: Vec<u16>,
@@ -50,6 +54,9 @@ pub struct Chip {
     i_reg: u16,
     /// General-purpose variable registers used by programs
     var_reg: VariableRegisters,
+    /// If the program is halted and waiting for a keypress
+    /// The u8 is the register to put the keycode into.
+    is_waiting_for_press: Option<u8>,
 }
 
 impl Chip {
@@ -62,15 +69,29 @@ impl Chip {
         self.display
     }
 
-    // Process current instruction
-    // Returns true if display is updated
-    pub fn process_instruction(&mut self) -> bool {
+    /// Process current instruction
+    /// Returns true if display is updated
+    ///
+    /// Takes a Vec<u8> of all the (supported) keys currently being pressed
+    pub fn process_instruction(&mut self, keys: Vec<u8>) -> bool {
+        // Check if it's supposed to wait for a keypress
+        if self.is_waiting_for_press.is_some() {
+            if keys.is_empty() {
+                return false;
+            } else {
+                // Put the keycode into the register if there's a key pressed
+                self.var_reg
+                    .set(self.is_waiting_for_press.unwrap(), keys[0]);
+            }
+        }
+
         // Get two consecutive bytes from PC & PC+1 and combine to form one u16(2 bytes)
         // and then construct them into the Instruction struct
         let first_byte = *self
             .memory
             .get(self.pc as usize)
             .expect("Program Counter is invalid");
+
         let second_byte = *self
             .memory
             .get(self.pc as usize + 1)
@@ -97,8 +118,10 @@ impl Chip {
 
                 // 0000
                 // Blank
-                0x0000 => self.pc -= 2,
-                _ => panic!("{:?}", instr),
+                0x0000 => {
+                    return false;
+                }
+                _ => panic!("{:?}", instr,),
             },
             // 1nnn
             // Jump to address
@@ -107,7 +130,7 @@ impl Chip {
             // Call subroutine and push current PC to stack
             0x2 => {
                 self.stack.push(self.pc);
-                self.pc = instr.get_addr()
+                self.pc = instr.get_addr();
             }
             // 3xnn
             // Skip instruction if V(x) == nn
@@ -137,12 +160,13 @@ impl Chip {
             // Set V(x) += nn
             0x7 => self.var_reg.set(
                 instr.get_nib(1),
-                instr.get_lbyte() + self.var_reg.get(instr.get_nib(1)),
+                ((instr.get_lbyte() as u16 + self.var_reg.get(instr.get_nib(1)) as u16) & 0x00FF)
+                    as u8,
             ),
             0x8 => {
                 let x_addr = instr.get_nib(1);
-                let x_val = instr.get_nib(1);
-                let y_val = instr.get_nib(2);
+                let x_val = self.var_reg.get(x_addr);
+                let y_val = self.var_reg.get(instr.get_nib(2));
 
                 match instr.get_nib(3) {
                     // 8xy0
@@ -161,10 +185,10 @@ impl Chip {
                     // Set V(x) = V(x) + V(y) & set V(F) to carry
                     0x4 => {
                         self.var_reg
-                            .set(x_addr, ((x_val as u16 + y_val as u16) & 0x0F) as u8);
+                            .set(x_addr, ((x_val as u16 + y_val as u16) & 0x00FF) as u8);
 
                         // Set V(F) to 1 if its greater than 255
-                        if ((x_val as u16 + y_val as u16) & 0xF0) != 0 {
+                        if ((x_val as u16 + y_val as u16) & 0xFF00) != 0 {
                             self.var_reg.vf = 1;
                         } else {
                             self.var_reg.vf = 0;
@@ -174,10 +198,14 @@ impl Chip {
                     // Set V(x) = V(x) - V(y) & set V(F) as NOT borrow
                     0x5 => {
                         self.var_reg
-                            .set(x_addr, (x_val as i8 - y_val as i8).abs() as u8);
+                            .set(x_addr, (Wrapping(x_val) - Wrapping(y_val)).0);
 
                         // Set V(F) to 1 if V(x) > V(y)
-                        self.var_reg.vf = (x_val > y_val) as u8;
+                        if x_val > y_val {
+                            self.var_reg.vf = 1;
+                        } else {
+                            self.var_reg.vf = 0;
+                        }
                     }
                     // 8xy6
                     // Bitshift to right with V(F) = removed bit
@@ -194,10 +222,14 @@ impl Chip {
                     // Set V(x) = V(y) - V(x) & set V(F) as NOT borrow
                     0x7 => {
                         self.var_reg
-                            .set(x_addr, (x_val as i8 - y_val as i8).abs() as u8);
+                            .set(x_addr, (Wrapping(y_val) - Wrapping(x_val)).0);
 
                         // Set V(F) to 1 if V(y) > V(x)
-                        self.var_reg.vf = (y_val > x_val) as u8;
+                        if y_val > x_val {
+                            self.var_reg.vf = 1;
+                        } else {
+                            self.var_reg.vf = 0;
+                        }
                     }
                     // 8xyE
                     // Bitshift to left with V(F) = removed bit
@@ -240,9 +272,9 @@ impl Chip {
                 // Starting X-Coordinate
                 let initial_x = self.var_reg.get(instr.get_nib(1)) & 0x3F;
                 // Current X-Coordinate
-                let mut x_coord = initial_x;
+                let mut x_coord = initial_x as usize;
                 // Current Y-Coordinate
-                let mut y_coord = self.var_reg.get(instr.get_nib(2)) & 0x1F;
+                let mut y_coord = self.var_reg.get(instr.get_nib(2)) as usize & 0x1F;
                 // Total height
                 let len = instr.get_nib(3);
 
@@ -251,13 +283,12 @@ impl Chip {
 
                 // For every line..
                 for i in 0..len {
-                    let sprite_data = self.memory[(addr + i as u16 - 1) as usize];
+                    let sprite_data = self.memory[(addr + i as u16) as usize];
 
                     // For every bit..
                     for j in 0..(8 as u8) {
                         if sprite_data & (128 >> j) != 0 {
-                            self.display[y_coord as usize][x_coord as usize] =
-                                !self.display[y_coord as usize][x_coord as usize];
+                            self.display[y_coord][x_coord] = !self.display[y_coord][x_coord];
                         }
 
                         x_coord += 1;
@@ -266,7 +297,7 @@ impl Chip {
                         }
                     }
 
-                    x_coord = initial_x;
+                    x_coord = initial_x as usize;
                     y_coord += 1;
                     if y_coord >= 32 {
                         break;
@@ -276,25 +307,26 @@ impl Chip {
                 return true;
             }
             // Keyboard Interactions
-            0xE => match instr.get_nib(3) {
-                // Ex9E
-                // Skip instruction if V(x) key is pressed
-                0xE => {
-                    //TODO: Check keyboard if V(x) is pressed
-                    if false {
-                        self.pc += 2;
+            0xE => {
+                let x_val = self.var_reg.get(instr.get_nib(1));
+                match instr.get_nib(3) {
+                    // Ex9E
+                    // Skip instruction if V(x) key is pressed
+                    0xE => {
+                        if keys.contains(&x_val) {
+                            self.pc += 2;
+                        }
                     }
-                }
-                // ExA1
-                // Skip instruction if V(x) is not pressed
-                0x1 => {
-                    //TODO: Check keyboard if V(x) is not pressed
-                    if true {
-                        self.pc += 2;
+                    // ExA1
+                    // Skip instruction if V(x) is not pressed
+                    0x1 => {
+                        if !keys.contains(&x_val) {
+                            self.pc += 2;
+                        }
                     }
-                }
-                _ => panic!(),
-            },
+                    _ => panic!("{:?}", instr),
+                };
+            }
             // Delays and sound timers
             0xF => {
                 let x_addr = instr.get_nib(1);
@@ -307,11 +339,8 @@ impl Chip {
                     // Fx0A
                     // Wait for key press and store value in V(x)
                     0xA => {
-                        //TODO: Wait for key press
-                        while !true {
-                            //TODO: Set V(x) to key
-                            self.var_reg.set(x_addr, 0x00);
-                        }
+                        self.is_waiting_for_press = Some(x_addr);
+                        return false;
                     }
                     // Fx18
                     // Set Sound Timer = V(x)
@@ -338,17 +367,17 @@ impl Chip {
                             // Fx55
                             // Store register values in memory
                             0x5 => {
-                                for i in 0..16 {
-                                    self.memory[(self.i_reg + i) as usize] =
-                                        self.var_reg.get(i as u8);
+                                for i in 0..(x_addr + 1) {
+                                    self.memory[(self.i_reg + i as u16) as usize] =
+                                        self.var_reg.get(i);
                                 }
                             }
                             // Fx65
                             // Read register values from memory
                             0x6 => {
-                                for i in 0..16 {
+                                for i in 0..(x_addr + 1) {
                                     self.var_reg
-                                        .set(i as u8, self.memory[(self.i_reg + i) as usize]);
+                                        .set(i, self.memory[(self.i_reg + i as u16) as usize]);
                                 }
                             }
                             _ => panic!(),
@@ -366,7 +395,7 @@ impl Chip {
     pub fn new(program: Vec<u8>) -> Self {
         let mut memory: Vec<u8> = vec![];
 
-        // Loads stuff into memory (painful to the eyes ik)
+        // Loads stuff into memory (painful to the eyes)
         memory.extend_from_slice(&FONT_0);
         memory.extend_from_slice(&FONT_1);
         memory.extend_from_slice(&FONT_2);
@@ -384,7 +413,7 @@ impl Chip {
         memory.extend_from_slice(&FONT_E);
         memory.extend_from_slice(&FONT_F);
 
-        memory.resize((Self::PROGRAM_START - 1) as usize, 0);
+        memory.resize((Self::PROGRAM_START) as usize, 0);
         memory.extend(program);
         memory.resize(4096, 0);
 
@@ -394,9 +423,10 @@ impl Chip {
             stack: vec![],
             delay_timer: 0,
             sound_timer: 0,
-            pc: Self::PROGRAM_START - 1,
+            pc: Self::PROGRAM_START,
             i_reg: 0,
             var_reg: VariableRegisters::new(),
+            is_waiting_for_press: None,
         }
     }
 }
