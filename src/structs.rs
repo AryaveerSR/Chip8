@@ -143,6 +143,7 @@ impl BehaviorConfig {
     }
 }
 
+/// Messages to send to the beeper thread
 enum BeeperMessage {
     Play,
     Pause,
@@ -164,6 +165,7 @@ impl Beeper {
 
         let (tx, rx) = channel::<BeeperMessage>();
 
+        // A thread dedicated to making noise
         thread::spawn(move || {
             let stream = match config.sample_format() {
                 cpal::SampleFormat::F32 => Self::create_stream::<f32>(&device, &config.into()),

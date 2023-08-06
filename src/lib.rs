@@ -32,7 +32,6 @@ pub struct Chip {
     /// 2D Array of bools each representing a monochromatic pixel.
     /// 1 => White;
     /// 0 => Black
-    // TODO: Use `bitvec` crate ??
     display: [[bool; 64]; 32],
     /// Last in, First out stack.
     stack: Vec<u16>,
