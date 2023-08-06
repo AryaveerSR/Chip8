@@ -8,7 +8,7 @@ use chip8::{
 };
 use gumdrop::Options;
 use minifb::{Key, Scale, Window, WindowOptions};
-use std::fs;
+use std::{fs, io};
 
 #[derive(Options)]
 struct ArgOpts {
@@ -33,6 +33,17 @@ const HEIGHT: usize = 32;
 
 fn main() {
     let args = ArgOpts::parse_args_default_or_exit();
+    let mut file_path: String = "".to_owned();
+    if args.free.len() < 1 {
+        println!("Enter path to ROM? ");
+        io::stdin()
+            .read_line(&mut file_path)
+            .expect("Cannot read input");
+        file_path = file_path.trim().parse().expect("Error parsing filename");
+    } else {
+        file_path = args.free[0].clone();
+    }
+
     let mut beep = Beeper::new();
 
     let update_rate = match args.rate {
@@ -56,7 +67,7 @@ fn main() {
         behavior.vf_reset = args.vf_reset.unwrap();
     }
 
-    let mut chip = Chip::new(fs::read(&args.free[0]).unwrap(), behavior);
+    let mut chip = Chip::new(fs::read(&file_path).unwrap(), behavior);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let (display_update, is_playing_sound) =
