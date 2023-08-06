@@ -1,6 +1,7 @@
 name: release
 
 on:
+  workflow-dispatch:
   release:
     types: [created]
 
