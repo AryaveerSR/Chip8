@@ -56,6 +56,8 @@ pub struct Chip {
     last_update: Instant,
     /// Behavior Configurations for conflicting implementations (Check `structs.rs`)
     behavior: BehaviorConfig,
+    /// Should be playing sound ?
+    is_playing_sound: bool,
 }
 
 impl Chip {
@@ -69,10 +71,9 @@ impl Chip {
     }
 
     /// Process current instruction
-    /// Returns true if display is updated
-    ///
     /// Takes a Vec<u8> of all the (supported) keys currently being pressed
-    pub fn process_instruction(&mut self, keys: Vec<u8>) -> bool {
+    /// Outputs a tuple (has_display_updated, should_play_sound)
+    pub fn process_instruction(&mut self, keys: Vec<u8>) -> (bool, bool) {
         // Update timers
         if self.last_update.elapsed().as_millis() > 17 {
             if self.delay_timer != 0 {
@@ -80,6 +81,9 @@ impl Chip {
             }
             if self.sound_timer != 0 {
                 self.sound_timer -= 1;
+                if self.sound_timer == 0 {
+                    self.is_playing_sound = false;
+                }
             }
             self.last_update = Instant::now();
         }
@@ -87,7 +91,7 @@ impl Chip {
         // Check if it's supposed to wait for a keypress
         if self.is_waiting_for_press.is_some() {
             if keys.is_empty() {
-                return false;
+                return (false, self.is_playing_sound);
             } else {
                 // Put the keycode into the register if there's a key pressed
                 self.var_reg
@@ -118,7 +122,7 @@ impl Chip {
                 // Clear the display
                 0x00E0 => {
                     self.display = [[false; 64]; 32];
-                    return true;
+                    return (true, self.is_playing_sound);
                 }
 
                 // 00EE
@@ -129,7 +133,7 @@ impl Chip {
                 // 0000
                 // Blank
                 0x0000 => {
-                    return false;
+                    return (false, self.is_playing_sound);
                 }
                 _ => panic!("{:?}", instr,),
             },
@@ -329,7 +333,7 @@ impl Chip {
                     }
                 }
 
-                return true;
+                return (true, self.is_playing_sound);
             }
             // Keyboard Interactions
             0xE => {
@@ -365,11 +369,16 @@ impl Chip {
                     // Wait for key press and store value in V(x)
                     0xA => {
                         self.is_waiting_for_press = Some(x_addr);
-                        return false;
+                        return (false, self.is_playing_sound);
                     }
                     // Fx18
                     // Set Sound Timer = V(x)
-                    0x8 => self.sound_timer = x_val,
+                    0x8 => {
+                        self.sound_timer = x_val;
+                        if x_val != 0 {
+                            self.is_playing_sound = true;
+                        }
+                    }
                     // Fx1E
                     // Set I = I + V(x)
                     0xE => self.i_reg += x_val as u16,
@@ -417,7 +426,7 @@ impl Chip {
             }
             _ => panic!(),
         }
-        return false;
+        return (false, self.is_playing_sound);
     }
 
     pub fn new(program: Vec<u8>, behavior: BehaviorConfig) -> Self {
@@ -457,6 +466,7 @@ impl Chip {
             is_waiting_for_press: None,
             last_update: Instant::now(),
             behavior,
+            is_playing_sound: false,
         }
     }
 }

@@ -1,3 +1,14 @@
+use cpal::{
+    self,
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+    BuildStreamError, FromSample, Sample, SizedSample, Stream,
+};
+use std::{
+    f32::consts,
+    sync::mpsc::{channel, Sender},
+    thread,
+};
+
 /// Structure for general-purpose registers.
 /// Simplies accessing them from instructions.
 #[derive(Debug)]
@@ -128,6 +139,119 @@ impl BehaviorConfig {
         BehaviorConfig {
             vf_reset: true,
             increment_i_on_save_load: true,
+        }
+    }
+}
+
+enum BeeperMessage {
+    Play,
+    Pause,
+    Stop,
+}
+
+/// A simple Beeper implementation using `cpal` crate
+#[derive(Debug)]
+pub struct Beeper {
+    tx: Sender<BeeperMessage>,
+    is_on: bool,
+}
+
+impl Beeper {
+    pub fn new() -> Self {
+        let host = cpal::default_host();
+        let device = host.default_output_device().unwrap();
+        let config = device.default_output_config().unwrap();
+
+        let (tx, rx) = channel::<BeeperMessage>();
+
+        thread::spawn(move || {
+            let stream = match config.sample_format() {
+                cpal::SampleFormat::F32 => Self::create_stream::<f32>(&device, &config.into()),
+                cpal::SampleFormat::I16 => Self::create_stream::<i16>(&device, &config.into()),
+                cpal::SampleFormat::U16 => Self::create_stream::<u16>(&device, &config.into()),
+                cpal::SampleFormat::I8 => Self::create_stream::<i8>(&device, &config.into()),
+                cpal::SampleFormat::I32 => Self::create_stream::<i32>(&device, &config.into()),
+                cpal::SampleFormat::I64 => Self::create_stream::<i64>(&device, &config.into()),
+                cpal::SampleFormat::U8 => Self::create_stream::<u8>(&device, &config.into()),
+                cpal::SampleFormat::U64 => Self::create_stream::<u64>(&device, &config.into()),
+                cpal::SampleFormat::F64 => Self::create_stream::<f64>(&device, &config.into()),
+                _ => panic!(),
+            };
+
+            match stream {
+                Ok(stream) => {
+                    stream.pause().unwrap();
+                    loop {
+                        match rx.recv() {
+                            Ok(BeeperMessage::Play) => stream.play().unwrap(),
+                            Ok(BeeperMessage::Pause) => stream.pause().unwrap(),
+                            Ok(BeeperMessage::Stop) => {
+                                stream.pause().unwrap();
+                                return;
+                            }
+                            Err(err) => panic!("{}", err),
+                        }
+                    }
+                }
+                Err(err) => panic!("{}", err),
+            }
+        });
+
+        Beeper { tx, is_on: false }
+    }
+
+    pub fn update(&mut self, state: bool) {
+        if state != self.is_on {
+            if state {
+                self.tx.send(BeeperMessage::Play).unwrap();
+            } else {
+                self.tx.send(BeeperMessage::Pause).unwrap();
+            }
+            self.is_on = state;
+        }
+    }
+
+    pub fn stop(&self) {
+        self.tx.send(BeeperMessage::Stop).unwrap();
+    }
+
+    fn create_stream<T>(
+        device: &cpal::Device,
+        config: &cpal::StreamConfig,
+    ) -> Result<Stream, BuildStreamError>
+    where
+        T: SizedSample + FromSample<f32>,
+    {
+        let sample_rate = config.sample_rate.0 as f32;
+        let channels = config.channels as usize;
+
+        let mut sample_clock = 0f32;
+        let mut next_value = move || {
+            sample_clock = (sample_clock + 1.0) % sample_rate;
+            (sample_clock * 440.0 * 2.0 * consts::PI / sample_rate).sin()
+        };
+
+        let err_fn = |err| panic!("{}", err);
+
+        device.build_output_stream(
+            config,
+            move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
+                Self::write_data(data, channels, &mut next_value)
+            },
+            err_fn,
+            None,
+        )
+    }
+
+    fn write_data<T>(output: &mut [T], channels: usize, next_sample: &mut dyn FnMut() -> f32)
+    where
+        T: Sample + FromSample<f32>,
+    {
+        for frame in output.chunks_mut(channels) {
+            let value: T = T::from_sample(next_sample());
+            for sample in frame.iter_mut() {
+                *sample = value;
+            }
         }
     }
 }

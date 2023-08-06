@@ -1,7 +1,11 @@
 //! Entry point for CHIP-8 Emulator
 //! @AryaveerSR <me.aryaveer@gmail.com>
 
-use chip8::{helpers, structs::BehaviorConfig, Chip};
+use chip8::{
+    helpers,
+    structs::{Beeper, BehaviorConfig},
+    Chip,
+};
 use gumdrop::Options;
 use minifb::{Key, Scale, Window, WindowOptions};
 use std::fs;
@@ -29,6 +33,7 @@ const HEIGHT: usize = 32;
 
 fn main() {
     let args = ArgOpts::parse_args_default_or_exit();
+    let mut beep = Beeper::new();
 
     let update_rate = match args.rate {
         Some(r) => r,
@@ -54,7 +59,10 @@ fn main() {
     let mut chip = Chip::new(fs::read(&args.free[0]).unwrap(), behavior);
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        if chip.process_instruction(helpers::keys_to_u8(window.get_keys())) {
+        let (display_update, is_playing_sound) =
+            chip.process_instruction(helpers::keys_to_u8(window.get_keys()));
+        beep.update(is_playing_sound);
+        if display_update {
             buffer = chip
                 .display()
                 .iter()
