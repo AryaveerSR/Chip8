@@ -9,26 +9,20 @@
 </div>
 
 1. [About](#about)
-2. [Goals](#goals)
-3. [Future Goals](#future-goals)
-4. [File Structure](#file-structure)
-5. [Resources](#resources)
-6. [Screenshots](#screenshots)
-7. [License](#license)
+2. [Features](#features)
+3. [File Structure](#file-structure)
+4. [Resources](#resources)
+5. [Screenshots](#screenshots)
+6. [License](#license)
 
 ## About
 
 This is my attempt at making a `Chip-8` emulator in rust. Chip-8 is apparantly the "Hello, World!" of emulators.
 
-## Goals
+## Features
 
-- Implement all (original) CHIP-8 instructions
-- A user-friendly command-line interface
-
-## Future Goals
-
-- Any kind of support for CHIP-48 or SUPER-CHIP extensions
-- GUI interface to load, save ROMs etc.
+- Implements all (original) CHIP-8 instructions
+- A simple commandline tool to launch the emulator, with optional configuration
 
 ## File Structure
 
