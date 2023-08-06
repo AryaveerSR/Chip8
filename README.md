@@ -9,25 +9,20 @@
 </div>
 
 1. [About](#about)
-2. [Goals](#goals)
-3. [Future Goals](#future-goals)
-4. [File Structure](#file-structure)
-5. [Resources](#resources)
+2. [Features](#features)
+3. [File Structure](#file-structure)
+4. [Resources](#resources)
+5. [Screenshots](#screenshots)
 6. [License](#license)
 
 ## About
 
 This is my attempt at making a `Chip-8` emulator in rust. Chip-8 is apparantly the "Hello, World!" of emulators.
 
-## Goals
+## Features
 
-- Implement all (original) CHIP-8 instructions
-- A user-friendly command-line interface
-
-## Future Goals
-
-- Any kind of support for CHIP-48 or SUPER-CHIP extensions
-- GUI interface to load, save ROMs etc.
+- Implements all (original) CHIP-8 instructions
+- A simple commandline tool to launch the emulator, with optional configuration
 
 ## File Structure
 
@@ -53,6 +48,17 @@ PS: I think I overcommented the code a bit
 - https://github.com/Timendus/chip8-test-suite
   <br>
   Includes test ROMs to verify your implementation
+
+## Screenshots
+
+- IBM Logo
+  ![image](https://github.com/AryaveerSR/Chip8/assets/51504825/449355e3-ef4e-42eb-bbed-7ecb791fab3b)
+
+- Flight Runner
+  ![image](https://github.com/AryaveerSR/Chip8/assets/51504825/daa79e42-7147-4ecd-af97-d6fb525605ef)
+
+- Keypad
+  ![image](https://github.com/AryaveerSR/Chip8/assets/51504825/6962f0e2-8671-4258-b1e4-46746ac7b25c)
 
 ## License
 
