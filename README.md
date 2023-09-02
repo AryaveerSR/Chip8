@@ -4,7 +4,7 @@
 
 ## Yet another chip-8 emulator (in rust)
 
-[![Duolingo](https://img.shields.io/crates/l/bitvec.svg?style=for-the-badge)](LICENSE)
+[![MIT](https://img.shields.io/crates/l/bitvec.svg?style=for-the-badge)](LICENSE)
 
 </div>
 
