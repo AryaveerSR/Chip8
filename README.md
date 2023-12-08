@@ -4,7 +4,7 @@
 
 ## Yet another chip-8 emulator (in rust)
 
-[![MIT](https://img.shields.io/crates/l/bitvec.svg?style=for-the-badge)](LICENSE)
+[![MIT](https://img.shields.io/crates/l/bitvec.svg?style=for-the-badge)](#License)
 
 </div>
 
@@ -63,3 +63,5 @@ PS: I think I overcommented the code a bit
 ## License
 
 This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+
+The test ROMs under [/roms/tests](roms/tests/) are sourced from https://github.com/Timendus/chip8-test-suite and are accordingly licensed under the [GNU GPL v3](https://github.com/Timendus/chip8-test-suite/blob/main/LICENSE).
